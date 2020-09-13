@@ -1,0 +1,123 @@
+---
+title: "COVID-19"
+author: "Małgorzata"
+date: "12/09/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+In this project I would like to research COVID-19 data set coming from [kaggle](https://www.kaggle.com/lin0li/covid19testing).The detaset represents information about tests that were conducted in various countries.
+
+An interesting question that triggers me is the following:
+Are there countries with an exceptionally high number of positive cases against the number of tests?
+
+## Data Overview
+
+First of all, let's explore the data set we are working with and explore the columns.
+Here are the steps that need to be taken:
+* use read_csV() function from readr package in order to import the data set,
+* find out how much data we have with dim() function,
+* check the column names with colnames() function,
+* finally, get a summary view with head() and glimpse() functions.
+
+```{r}
+# Importing the readr library
+library(readr)
+
+# Reading in he data for our analysis
+covid_df <- read_csv("covid.csv")
+
+```
+The column specification printed informs about the columns in our data set and the column types. There are 12 columns in our data set: 
+
+* Date informs about the time the data has been collected
+
+* Country_Region - represents countries or regions (for example there is a separate category for Veneto, region in Italy)
+* Province_State - provides more detailed information (for example for particular state like Massachusetts in United States)
+* positive - a number of positive results of COVID-19 test during that day
+* active - actual number of active cases
+* hospitalized - the total number of hospitalized patients
+* hospitalizedCurr - the current number of hospitalized patients
+* recovered - the number of recovered patients
+* death - the total number of deaths
+* total_tested - the total number of people tested
+* daily_tested - the total number of people tested that day
+* daily_positive - the total number of people tested positively that day.
+
+There are two types of columns in our data set:
+
+* col_character() 
+* col_double() 
+
+```{r}
+# Determining the dataframe dimension
+dim(covid_df)
+```
+
+There are 12 columns and 21460 rows in our data set.
+```{r}
+# Displaying the data set summary
+library(tibble)
+glimpse(covid_df)
+```
+The glimpse() function is useful because it displays a transposed version of our data. We can again see the column names, their types and values, however this time we get a better understanding about how the data looks like. The function tries to show as much data as possible.
+
+```{r}
+# Displaying the first rows of our data set
+head(covid_df)
+```
+As presented above, the Proveince_State column mixing data about country and state is something that we would like to avoid. We will filter the data to keep only "All States" for the US.
+
+First, we will import dplyr package, which will help us to manipulate data easily. 
+```{r}
+# Importing dplyr library
+library(dplyr)
+```
+Next, we will filter "All States" from Province_State column.
+```{r}
+# Filtering the rows related to "All States"
+covid_df_all_states <- covid_df %>%
+  filter(Province_State == "All States") %>%
+  # Delete Province_State column
+  select(-Province_State)
+```
+Finally, let's display few rows from our data to see the changes. 
+```{r}
+# Displaying the first rows of our data set
+head(covid_df_all_states)
+```
+Notice that Province_state column no longer appears in our data set. It has been removed because it is no longer necessary after filtering the data.
+
+## Daily Measures
+
+As presented before, our data set contains columns with data representing daily and cumulative measures. We are interested in daily measures in order to compare positive cases against the number of tests. In this section we will isolate the columns related to daily recordings useful for further analysis.
+
+```{r}
+# Selecting columns related to daily measures
+covid_df_all_states_daily <- covid_df_all_states %>%
+  select(Date, Country_Region, active, hospitalizedCurr, daily_tested, daily_positive)
+```
+## Extracting Countries with Top Positive Cases Against the Number of Tests
+The main idea of this project is to find out what countries have the highest number of positive cases against the number of tests. We will summarize our covid_all_states_daily dataframe by computing the number of positively tested patients and the number of tests grouped by Country_Region column. 
+
+In order to group rows by Country_region we will use group_by() function, which will convert our data and allow to perform operations by group. The next step will be to use summarize() and sum() functions combined. The summarize() function will create a new dataframe and sum() will compute the sum for the columns. 
+```{r}
+# Grouping columns by Country_Region column
+covid_df_all_states_daily_sum <- covid_df_all_states_daily %>%
+  group_by(Country_Region) %>%
+  summarize(tested = sum(daily_tested), positive = sum(daily_positive),proportion = positive / tested)%>%
+  # Arrange the results in descending order
+  arrange(desc(proportion))
+# Displaying the result
+covid_df_all_states_daily_sum
+```
+Looking at the results we can notice something weird in the case of Iceland and Sweeden. I checked the data and Iceland does not have the column daily_tested filled (all results are equal to 0). We do not have all recordings for Sweden and there is one negative value in positively_tested column, looking like a mistake.
+
+## Conclusions
+
+Based on our concise analysis we can say that countries with the highest number of positive cases vs. tests conducted are Costa Rica (31.4%), Scotland (26.5%), and Ecuador (20.7%). 
